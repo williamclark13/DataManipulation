@@ -1,3 +1,3 @@
-# Covid Data Manipulation
+# Data Manipulation
 
 [Data Manipulated: https://ourworldindata.org/covid-deaths]
