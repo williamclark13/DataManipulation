@@ -1,0 +1,123 @@
+----------DATE CONVERSION
+Select SaleDateConverted, CONVERT(Date, SaleDate)
+From Portfolio..[Nashville Housing Data for Data Cleaning]
+
+Update [Nashville Housing Data for Data Cleaning]
+SET SaleDate = CONVERT(Date, SaleDate)
+
+Alter Table [Nashville Housing Data for Data Cleaning]
+Add SaleDateConverted Date;
+
+Update [Nashville Housing Data for Data Cleaning]
+SET SaleDateConverted = CONVERT(Date, SaleDate)
+
+----------POPULATE PROPERTY ADDRRESS DATA
+Select *
+From Portfolio..[Nashville Housing Data for Data Cleaning]
+Where PropertyAddress is null
+order by ParcelID
+
+Select nhd1.ParcelID, nhd2.PropertyAddress, nhd2.ParcelID, nhd2.PropertyAddress, ISNULL(nhd1.PropertyAddress, nhd2.PropertyAddress)
+From Portfolio..[Nashville Housing Data for Data Cleaning] as nhd1
+Join Portfolio..[Nashville Housing Data for Data Cleaning] as nhd2
+	on nhd1.ParcelID = nhd2.ParcelID
+	AND nhd1.UniqueID <> nhd2.UniqueID
+Where nhd1.PropertyAddress is null
+
+Update nhd1
+Set PropertyAddress = ISNULL(nhd1.PropertyAddress, nhd2.PropertyAddress)
+From Portfolio..[Nashville Housing Data for Data Cleaning] as nhd1
+Join Portfolio..[Nashville Housing Data for Data Cleaning] as nhd2
+	on nhd1.ParcelID = nhd2.ParcelID
+	AND nhd1.UniqueID <> nhd2.UniqueID
+Where nhd1.PropertyAddress is null
+
+----------BREAKING OUT ADDRESS INTO INDIVIDUAL COLUMNS (address, city, state)
+Select *
+From Portfolio..[Nashville Housing Data for Data Cleaning]
+Where PropertyAddress is null
+order by ParcelID
+
+Select
+SUBSTRING(PropertyAddress, 1, CHARINDEX(',', PropertyAddress) - 1) as Address,
+SUBSTRING(PropertyAddress, CHARINDEX(',', PropertyAddress) + 1, LEN(PropertyAddress)) as Address
+From Portfolio..[Nashville Housing Data for Data Cleaning]
+
+Alter Table Portfolio..[Nashville Housing Data for Data Cleaning]
+Add PropertySplitAddress nvarchar(255);
+
+Update Portfolio..[Nashville Housing Data for Data Cleaning]
+Set PropertySplitAddress = SUBSTRING(PropertyAddress, 1, CHARINDEX(',', PropertyAddress) - 1)
+
+Alter Table Portfolio..[Nashville Housing Data for Data Cleaning]
+Add PropertySplitCity nvarchar(255);
+
+Update Portfolio..[Nashville Housing Data for Data Cleaning]
+Set PropertySplitCity = SUBSTRING(PropertyAddress, CHARINDEX(',', PropertyAddress) + 1, LEN(PropertyAddress))
+
+Select *
+From Portfolio..[Nashville Housing Data for Data Cleaning]
+
+-------------------------------------------------------------------------------
+Select OwnerAddress
+From Portfolio..[Nashville Housing Data for Data Cleaning]
+
+Select
+PARSENAME(REPLACE(OwnerAddress, ',', '.'), 3),
+PARSENAME(REPLACE(OwnerAddress, ',', '.'), 2),
+PARSENAME(REPLACE(OwnerAddress, ',', '.'), 1)
+From Portfolio..[Nashville Housing Data for Data Cleaning]
+
+Alter Table Portfolio..[Nashville Housing Data for Data Cleaning]
+Add OwnerSplitAddress nvarchar(255);
+
+Update Portfolio..[Nashville Housing Data for Data Cleaning]
+Set OwnerSplitAddress = PARSENAME(REPLACE(OwnerAddress, ',', '.'), 3)
+
+Alter Table Portfolio..[Nashville Housing Data for Data Cleaning]
+Add OwnerSplitCity nvarchar(255);
+
+Update Portfolio..[Nashville Housing Data for Data Cleaning]
+Set OwnerSplitCity = PARSENAME(REPLACE(OwnerAddress, ',', '.'), 2)
+
+Alter Table Portfolio..[Nashville Housing Data for Data Cleaning]
+Add OwnerSplitState nvarchar(255);
+
+Update Portfolio..[Nashville Housing Data for Data Cleaning]
+Set OwnerSplitState = PARSENAME(REPLACE(OwnerAddress, ',', '.'), 1)
+
+--------------CHANGE Y AND N to Yes and No in "Sold As Vacant" Field
+Select Distinct(SoldAsVacant), COUNT(SoldAsVacant)
+From Portfolio..[Nashville Housing Data for Data Cleaning]
+group by SoldAsVacant
+order by 2
+
+-------------------------REMOVE DUPLICATES
+WITH RowNumCTE as (
+Select *,
+	ROW_NUMBER() Over (
+	Partition By ParcelID,
+				 PropertyAddress,
+				SalePrice,
+				SaleDate,
+				LegalReference
+				ORDER By
+					UniqueID
+					) row_num
+From Portfolio..[Nashville Housing Data for Data Cleaning]
+--order by ParcelID
+)
+Select *
+From RowNumCTE
+Where row_num > 1
+Order by PropertyAddress
+
+-----------------------DELETE UNUSED COLUMNS
+Select *
+From Portfolio..[Nashville Housing Data for Data Cleaning]
+
+ALTER TABLE Portfolio..[Nashville Housing Data for Data Cleaning]
+DROP COLUMN OwnerAddress, TaxDistrict, PropertyAddress
+
+ALTER TABLE Portfolio..[Nashville Housing Data for Data Cleaning]
+DROP COLUMN SaleDate
